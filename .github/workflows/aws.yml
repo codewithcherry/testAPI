@@ -1,0 +1,42 @@
+name: Deploy to EC2 with PM2
+
+on:
+  push:
+    branches: [main]          # Trigger workflow on pushes to main
+  pull_request:
+    branches: [main]          # Also trigger on PRs targeting main
+
+jobs:
+  deploy:
+    runs-on: self-hosted      # Runs on your EC2 self-hosted runner
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        # Get the latest code from the repo
+
+      - name: Install Dependencies
+        run: npm install
+        # Install npm packages
+
+      - name: Ensure PM2 is Installed
+        run: |
+          if ! command -v pm2 &> /dev/null
+          then
+            echo "PM2 not found. Installing..."
+            npm install -g pm2
+          else
+            echo "PM2 already installed."
+          fi
+        # Check if PM2 is installed globally; install if missing
+
+      - name: Write .env File
+        run: echo "${{ secrets.ENV_FILE }}" > .env
+        # Write environment variables from GitHub Secrets into .env
+
+      - name: Start Node.js App with PM2
+        run: |
+          pm2 stop my-app || true
+          pm2 start npm --name my-app -- start
+          pm2 save
+        # Stop the running app if any, start fresh with pm2, and save the process list
